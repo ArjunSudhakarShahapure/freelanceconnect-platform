@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, MapPin, Clock, DollarSign, Briefcase } from "lucide-react";
+import { useSession } from "@/lib/auth-client";
+import { useRouter } from "next/navigation";
 
 interface Vacancy {
   id: number;
@@ -18,60 +20,16 @@ interface Vacancy {
 }
 
 export default function VacanciesPage() {
-  const [vacancies] = useState<Vacancy[]>([
-    {
-      id: 1,
-      title: "Senior UI/UX Designer",
-      company: "TechStartup Inc",
-      location: "Remote",
-      type: "Full-time",
-      budget: "$80k - $100k/year",
-      duration: "Permanent",
-      postedBy: "Sarah Johnson",
-      postedDate: "2 days ago",
-      description: "Looking for an experienced UI/UX designer to lead design initiatives for our mobile and web applications. Must have 5+ years of experience.",
-      skills: ["Figma", "UI Design", "UX Research", "Prototyping"],
-    },
-    {
-      id: 2,
-      title: "Graphic Designer for Branding Project",
-      company: "Creative Agency",
-      location: "New York, NY",
-      type: "Contract",
-      budget: "$5,000 - $8,000",
-      duration: "3 months",
-      postedBy: "Michael Chen",
-      postedDate: "5 days ago",
-      description: "We need a talented graphic designer to create a complete brand identity for a new coffee shop chain. Includes logo, packaging, and marketing materials.",
-      skills: ["Illustrator", "Photoshop", "Branding", "Print Design"],
-    },
-    {
-      id: 3,
-      title: "Mobile App Designer",
-      company: "FinTech Solutions",
-      location: "San Francisco, CA",
-      type: "Freelance",
-      budget: "$60/hour",
-      duration: "6 months",
-      postedBy: "Emma Rodriguez",
-      postedDate: "1 week ago",
-      description: "Seeking a mobile app designer to design a banking app from scratch. Must have experience with financial applications and understand security best practices.",
-      skills: ["Mobile Design", "Figma", "iOS", "Android"],
-    },
-    {
-      id: 4,
-      title: "Web Designer for E-commerce",
-      company: "Fashion Retail",
-      location: "Remote",
-      type: "Part-time",
-      budget: "$40/hour",
-      duration: "Ongoing",
-      postedBy: "David Park",
-      postedDate: "3 days ago",
-      description: "Looking for a web designer to help redesign our e-commerce platform. Focus on improving user experience and conversion rates.",
-      skills: ["Web Design", "E-commerce", "Shopify", "UX"],
-    },
-  ]);
+  const { data: session, isPending } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isPending && !session?.user) {
+      router.push("/login");
+    }
+  }, [session, isPending, router]);
+
+  const [vacancies] = useState<Vacancy[]>([]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState("All");
@@ -85,6 +43,20 @@ export default function VacanciesPage() {
     const matchesType = selectedType === "All" || vacancy.type === selectedType;
     return matchesSearch && matchesType;
   });
+
+  if (isPending) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="border border-black p-8">
+          <p className="text-lg font-medium">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session?.user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -142,6 +114,13 @@ export default function VacanciesPage() {
 
         {/* Vacancies List */}
         <div className="max-w-5xl mx-auto space-y-6">
+          {filteredVacancies.length === 0 && (
+            <div className="text-center py-16 border border-black">
+              <p className="text-xl font-medium mb-2">No vacancies available</p>
+              <p className="text-gray-600">Check back later for new opportunities or post your own job!</p>
+            </div>
+          )}
+          
           {filteredVacancies.map((vacancy) => (
             <article key={vacancy.id} className="border border-black bg-white">
               {/* Vacancy Header */}
@@ -215,13 +194,6 @@ export default function VacanciesPage() {
               </div>
             </article>
           ))}
-
-          {filteredVacancies.length === 0 && (
-            <div className="text-center py-16 border border-black">
-              <p className="text-xl font-medium mb-2">No vacancies found</p>
-              <p className="text-gray-600">Try adjusting your search or filters</p>
-            </div>
-          )}
         </div>
       </div>
     </div>

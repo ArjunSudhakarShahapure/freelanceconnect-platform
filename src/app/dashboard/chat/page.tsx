@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Send, Circle } from "lucide-react";
+import { useSession } from "@/lib/auth-client";
+import { useRouter } from "next/navigation";
 
 interface User {
   id: number;
@@ -22,94 +24,23 @@ interface Message {
 }
 
 export default function ChatPage() {
-  const [users] = useState<User[]>([
-    {
-      id: 1,
-      name: "Sarah Johnson",
-      role: "Graphic Designer",
-      isOnline: true,
-      lastMessage: "Thanks for the feedback!",
-      timestamp: "2m ago",
-      unread: 2,
-    },
-    {
-      id: 2,
-      name: "Michael Chen",
-      role: "UI/UX Designer",
-      isOnline: true,
-      lastMessage: "Let's discuss the project tomorrow",
-      timestamp: "1h ago",
-    },
-    {
-      id: 3,
-      name: "Emma Rodriguez",
-      role: "Graphic Designer",
-      isOnline: false,
-      lastMessage: "I'll send you the files",
-      timestamp: "3h ago",
-    },
-    {
-      id: 4,
-      name: "David Park",
-      role: "UI/UX Designer",
-      isOnline: true,
-      lastMessage: "Great work on the landing page!",
-      timestamp: "Yesterday",
-    },
-    {
-      id: 5,
-      name: "Lisa Anderson",
-      role: "Graphic Designer",
-      isOnline: false,
-      lastMessage: "See you at the meeting",
-      timestamp: "2 days ago",
-    },
-  ]);
+  const { data: session, isPending } = useSession();
+  const router = useRouter();
 
-  const [selectedUser, setSelectedUser] = useState<User>(users[0]);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      sender: "Sarah Johnson",
-      content: "Hey! I saw your portfolio. Your design work is amazing!",
-      timestamp: "10:30 AM",
-      isOwn: false,
-    },
-    {
-      id: 2,
-      sender: "You",
-      content: "Thank you so much! I really appreciate that.",
-      timestamp: "10:32 AM",
-      isOwn: true,
-    },
-    {
-      id: 3,
-      sender: "Sarah Johnson",
-      content: "I'm working on a branding project and could use some feedback. Would you be interested?",
-      timestamp: "10:33 AM",
-      isOwn: false,
-    },
-    {
-      id: 4,
-      sender: "You",
-      content: "Absolutely! I'd love to help. Send me the details.",
-      timestamp: "10:35 AM",
-      isOwn: true,
-    },
-    {
-      id: 5,
-      sender: "Sarah Johnson",
-      content: "Thanks for the feedback!",
-      timestamp: "10:45 AM",
-      isOwn: false,
-    },
-  ]);
+  useEffect(() => {
+    if (!isPending && !session?.user) {
+      router.push("/login");
+    }
+  }, [session, isPending, router]);
 
+  const [users] = useState<User[]>([]);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
   const handleSendMessage = () => {
-    if (newMessage.trim()) {
+    if (newMessage.trim() && selectedUser) {
       const message: Message = {
         id: messages.length + 1,
         sender: "You",
@@ -125,6 +56,20 @@ export default function ChatPage() {
   const filteredUsers = users.filter(user =>
     user.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (isPending) {
+    return (
+      <div className="h-screen bg-white flex items-center justify-center">
+        <div className="border border-black p-8">
+          <p className="text-lg font-medium">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session?.user) {
+    return null;
+  }
 
   return (
     <div className="h-screen flex bg-white">
@@ -146,133 +91,158 @@ export default function ChatPage() {
 
         {/* User List */}
         <div className="flex-1 overflow-y-auto">
-          {filteredUsers.map((user) => (
-            <button
-              key={user.id}
-              onClick={() => setSelectedUser(user)}
-              className={`w-full p-4 border-b border-black text-left transition-colors ${
-                selectedUser.id === user.id
-                  ? "bg-black text-white"
-                  : "bg-white text-black hover:bg-gray-100"
-              }`}
-            >
-              <div className="flex items-start gap-3">
-                <div className="relative">
-                  <div className="w-12 h-12 border border-black bg-white flex items-center justify-center flex-shrink-0">
-                    <span className={`font-bold text-sm ${selectedUser.id === user.id ? 'text-black' : ''}`}>
-                      {user.name.split(" ").map(n => n[0]).join("")}
-                    </span>
-                  </div>
-                  <Circle
-                    size={10}
-                    className={`absolute bottom-0 right-0 ${
-                      user.isOnline ? "fill-black" : "fill-gray-400"
-                    }`}
-                    fill="currentColor"
-                  />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-start mb-1">
-                    <h4 className="font-bold text-sm truncate">{user.name}</h4>
-                    {user.unread && (
-                      <span className={`ml-2 px-2 py-0.5 text-xs font-bold border ${
-                        selectedUser.id === user.id
-                          ? "border-white bg-white text-black"
-                          : "border-black bg-black text-white"
-                      }`}>
-                        {user.unread}
+          {filteredUsers.length === 0 ? (
+            <div className="p-6 text-center text-gray-600">
+              <p className="text-sm">No conversations yet</p>
+              <p className="text-xs mt-2">Start chatting with community members!</p>
+            </div>
+          ) : (
+            filteredUsers.map((user) => (
+              <button
+                key={user.id}
+                onClick={() => setSelectedUser(user)}
+                className={`w-full p-4 border-b border-black text-left transition-colors ${
+                  selectedUser?.id === user.id
+                    ? "bg-black text-white"
+                    : "bg-white text-black hover:bg-gray-100"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="relative">
+                    <div className="w-12 h-12 border border-black bg-white flex items-center justify-center flex-shrink-0">
+                      <span className={`font-bold text-sm ${selectedUser?.id === user.id ? 'text-black' : ''}`}>
+                        {user.name.split(" ").map(n => n[0]).join("")}
                       </span>
+                    </div>
+                    <Circle
+                      size={10}
+                      className={`absolute bottom-0 right-0 ${
+                        user.isOnline ? "fill-black" : "fill-gray-400"
+                      }`}
+                      fill="currentColor"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-start mb-1">
+                      <h4 className="font-bold text-sm truncate">{user.name}</h4>
+                      {user.unread && (
+                        <span className={`ml-2 px-2 py-0.5 text-xs font-bold border ${
+                          selectedUser?.id === user.id
+                            ? "border-white bg-white text-black"
+                            : "border-black bg-black text-white"
+                        }`}>
+                          {user.unread}
+                        </span>
+                      )}
+                    </div>
+                    <p className={`text-xs mb-1 ${selectedUser?.id === user.id ? 'text-gray-300' : 'text-gray-600'}`}>
+                      {user.role}
+                    </p>
+                    {user.lastMessage && (
+                      <p className={`text-xs truncate ${selectedUser?.id === user.id ? 'text-gray-300' : 'text-gray-500'}`}>
+                        {user.lastMessage}
+                      </p>
+                    )}
+                    {user.timestamp && (
+                      <p className={`text-xs mt-1 ${selectedUser?.id === user.id ? 'text-gray-400' : 'text-gray-400'}`}>
+                        {user.timestamp}
+                      </p>
                     )}
                   </div>
-                  <p className={`text-xs mb-1 ${selectedUser.id === user.id ? 'text-gray-300' : 'text-gray-600'}`}>
-                    {user.role}
-                  </p>
-                  {user.lastMessage && (
-                    <p className={`text-xs truncate ${selectedUser.id === user.id ? 'text-gray-300' : 'text-gray-500'}`}>
-                      {user.lastMessage}
-                    </p>
-                  )}
-                  {user.timestamp && (
-                    <p className={`text-xs mt-1 ${selectedUser.id === user.id ? 'text-gray-400' : 'text-gray-400'}`}>
-                      {user.timestamp}
-                    </p>
-                  )}
                 </div>
-              </div>
-            </button>
-          ))}
+              </button>
+            ))
+          )}
         </div>
       </div>
 
       {/* Chat Area */}
       <div className="flex-1 flex flex-col">
-        {/* Chat Header */}
-        <div className="p-4 border-b border-black flex items-center gap-3">
-          <div className="relative">
-            <div className="w-12 h-12 border border-black bg-white flex items-center justify-center">
-              <span className="font-bold text-sm">
-                {selectedUser.name.split(" ").map(n => n[0]).join("")}
-              </span>
-            </div>
-            <Circle
-              size={10}
-              className={`absolute bottom-0 right-0 ${
-                selectedUser.isOnline ? "fill-black" : "fill-gray-400"
-              }`}
-              fill="currentColor"
-            />
-          </div>
-          <div>
-            <h3 className="font-bold">{selectedUser.name}</h3>
-            <p className="text-sm text-gray-600">{selectedUser.role}</p>
-          </div>
-        </div>
-
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.isOwn ? "justify-end" : "justify-start"}`}
-            >
-              <div className={`max-w-md ${message.isOwn ? "text-right" : "text-left"}`}>
-                <div
-                  className={`inline-block p-4 border border-black ${
-                    message.isOwn
-                      ? "bg-black text-white"
-                      : "bg-white text-black"
-                  }`}
-                >
-                  <p className="text-sm">{message.content}</p>
+        {selectedUser ? (
+          <>
+            {/* Chat Header */}
+            <div className="p-4 border-b border-black flex items-center gap-3">
+              <div className="relative">
+                <div className="w-12 h-12 border border-black bg-white flex items-center justify-center">
+                  <span className="font-bold text-sm">
+                    {selectedUser.name.split(" ").map(n => n[0]).join("")}
+                  </span>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  {message.timestamp}
-                </p>
+                <Circle
+                  size={10}
+                  className={`absolute bottom-0 right-0 ${
+                    selectedUser.isOnline ? "fill-black" : "fill-gray-400"
+                  }`}
+                  fill="currentColor"
+                />
+              </div>
+              <div>
+                <h3 className="font-bold">{selectedUser.name}</h3>
+                <p className="text-sm text-gray-600">{selectedUser.role}</p>
               </div>
             </div>
-          ))}
-        </div>
 
-        {/* Message Input */}
-        <div className="p-4 border-t border-black">
-          <div className="flex gap-4">
-            <input
-              type="text"
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
-              placeholder="Type a message..."
-              className="flex-1 px-4 py-3 border border-black focus:outline-none focus:ring-2 focus:ring-black"
-            />
-            <button
-              onClick={handleSendMessage}
-              className="px-6 py-3 border border-black bg-black text-white hover:bg-white hover:text-black transition-colors flex items-center gap-2"
-            >
-              <Send size={18} />
-              Send
-            </button>
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {messages.length === 0 ? (
+                <div className="text-center text-gray-600 mt-8">
+                  <p className="text-sm">No messages yet</p>
+                  <p className="text-xs mt-2">Start a conversation!</p>
+                </div>
+              ) : (
+                messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex ${message.isOwn ? "justify-end" : "justify-start"}`}
+                  >
+                    <div className={`max-w-md ${message.isOwn ? "text-right" : "text-left"}`}>
+                      <div
+                        className={`inline-block p-4 border border-black ${
+                          message.isOwn
+                            ? "bg-black text-white"
+                            : "bg-white text-black"
+                        }`}
+                      >
+                        <p className="text-sm">{message.content}</p>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {message.timestamp}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Message Input */}
+            <div className="p-4 border-t border-black">
+              <div className="flex gap-4">
+                <input
+                  type="text"
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+                  placeholder="Type a message..."
+                  className="flex-1 px-4 py-3 border border-black focus:outline-none focus:ring-2 focus:ring-black"
+                />
+                <button
+                  onClick={handleSendMessage}
+                  className="px-6 py-3 border border-black bg-black text-white hover:bg-white hover:text-black transition-colors flex items-center gap-2"
+                >
+                  <Send size={18} />
+                  Send
+                </button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-gray-600">
+            <div className="text-center">
+              <p className="text-lg font-medium mb-2">No conversation selected</p>
+              <p className="text-sm">Select a user from the list to start chatting</p>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

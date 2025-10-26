@@ -21,40 +21,7 @@ interface Post {
 export default function FeedPage() {
   const { data: session, isPending } = useSession();
   const router = useRouter();
-  const [posts, setPosts] = useState<Post[]>([
-    {
-      id: 1,
-      author: "Sarah Johnson",
-      role: "Graphic Designer",
-      timestamp: "2 hours ago",
-      content: "Just finished this branding project for a local coffee shop. Excited to share the final results! What do you think about the color palette?",
-      image: "https://images.unsplash.com/photo-1634942537034-2531766767d1?w=800&h=600&fit=crop",
-      likes: 24,
-      comments: 7,
-      isLiked: false,
-    },
-    {
-      id: 2,
-      author: "Michael Chen",
-      role: "UI/UX Designer",
-      timestamp: "5 hours ago",
-      content: "Looking for a UI designer to collaborate on a fintech app. Must have experience with mobile-first design. DM if interested!",
-      likes: 18,
-      comments: 12,
-      isLiked: false,
-    },
-    {
-      id: 3,
-      author: "Emma Rodriguez",
-      role: "Graphic Designer",
-      timestamp: "1 day ago",
-      content: "New icon set available in the resources section! 150+ minimal line icons perfect for your next project. Free for community members.",
-      image: "https://images.unsplash.com/photo-1558655146-d09347e92766?w=800&h=600&fit=crop",
-      likes: 42,
-      comments: 15,
-      isLiked: true,
-    },
-  ]);
+  const [posts, setPosts] = useState<Post[]>([]);
 
   const [newPost, setNewPost] = useState("");
 
@@ -147,64 +114,71 @@ export default function FeedPage() {
 
         {/* Posts */}
         <div className="space-y-6">
-          {posts.map((post) => (
-            <article key={post.id} className="border border-black bg-white">
-              {/* Post Header */}
-              <div className="p-6 border-b border-black">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 border border-black bg-white flex items-center justify-center flex-shrink-0">
-                    <span className="font-bold text-lg">
-                      {post.author.split(" ").map(n => n[0]).join("")}
-                    </span>
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-bold">{post.author}</h4>
-                    <p className="text-sm text-gray-600">{post.role}</p>
-                    <p className="text-xs text-gray-500 mt-1">{post.timestamp}</p>
+          {posts.length === 0 ? (
+            <div className="text-center py-16 border border-black">
+              <p className="text-xl font-medium mb-2">No posts yet</p>
+              <p className="text-gray-600">Be the first to share something with the community!</p>
+            </div>
+          ) : (
+            posts.map((post) => (
+              <article key={post.id} className="border border-black bg-white">
+                {/* Post Header */}
+                <div className="p-6 border-b border-black">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 border border-black bg-white flex items-center justify-center flex-shrink-0">
+                      <span className="font-bold text-lg">
+                        {post.author.split(" ").map(n => n[0]).join("")}
+                      </span>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-bold">{post.author}</h4>
+                      <p className="text-sm text-gray-600">{post.role}</p>
+                      <p className="text-xs text-gray-500 mt-1">{post.timestamp}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Post Content */}
-              <div className="p-6">
-                <p className="text-base leading-relaxed mb-4">{post.content}</p>
-                {post.image && (
-                  <div className="border border-black">
-                    <Image
-                      src={post.image}
-                      alt="Post image"
-                      width={800}
-                      height={600}
-                      className="w-full h-auto"
-                    />
-                  </div>
-                )}
-              </div>
+                {/* Post Content */}
+                <div className="p-6">
+                  <p className="text-base leading-relaxed mb-4">{post.content}</p>
+                  {post.image && (
+                    <div className="border border-black">
+                      <Image
+                        src={post.image}
+                        alt="Post image"
+                        width={800}
+                        height={600}
+                        className="w-full h-auto"
+                      />
+                    </div>
+                  )}
+                </div>
 
-              {/* Post Actions */}
-              <div className="border-t border-black p-4 flex items-center gap-4">
-                <button
-                  onClick={() => handleLike(post.id)}
-                  className={`flex items-center gap-2 px-4 py-2 border border-black transition-colors ${
-                    post.isLiked
-                      ? "bg-black text-white"
-                      : "bg-white text-black hover:bg-black hover:text-white"
-                  }`}
-                >
-                  <Heart size={18} fill={post.isLiked ? "currentColor" : "none"} />
-                  <span className="text-sm font-medium">{post.likes}</span>
-                </button>
-                <button className="flex items-center gap-2 px-4 py-2 border border-black bg-white text-black hover:bg-black hover:text-white transition-colors">
-                  <MessageCircle size={18} />
-                  <span className="text-sm font-medium">{post.comments}</span>
-                </button>
-                <button className="flex items-center gap-2 px-4 py-2 border border-black bg-white text-black hover:bg-black hover:text-white transition-colors ml-auto">
-                  <Share2 size={18} />
-                  <span className="text-sm font-medium">Share</span>
-                </button>
-              </div>
-            </article>
-          ))}
+                {/* Post Actions */}
+                <div className="border-t border-black p-4 flex items-center gap-4">
+                  <button
+                    onClick={() => handleLike(post.id)}
+                    className={`flex items-center gap-2 px-4 py-2 border border-black transition-colors ${
+                      post.isLiked
+                        ? "bg-black text-white"
+                        : "bg-white text-black hover:bg-black hover:text-white"
+                    }`}
+                  >
+                    <Heart size={18} fill={post.isLiked ? "currentColor" : "none"} />
+                    <span className="text-sm font-medium">{post.likes}</span>
+                  </button>
+                  <button className="flex items-center gap-2 px-4 py-2 border border-black bg-white text-black hover:bg-black hover:text-white transition-colors">
+                    <MessageCircle size={18} />
+                    <span className="text-sm font-medium">{post.comments}</span>
+                  </button>
+                  <button className="flex items-center gap-2 px-4 py-2 border border-black bg-white text-black hover:bg-black hover:text-white transition-colors ml-auto">
+                    <Share2 size={18} />
+                    <span className="text-sm font-medium">Share</span>
+                  </button>
+                </div>
+              </article>
+            ))
+          )}
         </div>
       </div>
     </div>
