@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, MessageSquare, FolderOpen, Briefcase, User, Settings } from "lucide-react";
+import { useSession } from "@/lib/auth-client";
 
 export default function DashboardLayout({
   children,
@@ -10,6 +11,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { data: session } = useSession();
 
   const navItems = [
     { href: "/dashboard/feed", label: "Feed", icon: Home },
@@ -55,7 +57,7 @@ export default function DashboardLayout({
               <User size={20} />
             </div>
             <div>
-              <p className="font-medium text-sm">John Doe</p>
+              <p className="font-medium text-sm">{session?.user?.name || "Guest User"}</p>
               <p className="text-xs text-gray-600">UI/UX Designer</p>
             </div>
           </div>
