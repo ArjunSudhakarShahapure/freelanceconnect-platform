@@ -1,17 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Save } from "lucide-react";
+import { useSession } from "@/lib/auth-client";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export default function SettingsPage() {
+  const { data: session, isPending, refetch } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isPending && !session?.user) {
+      router.push("/login");
+    }
+  }, [session, isPending, router]);
+
   const [profileData, setProfileData] = useState({
-    name: "John Doe",
-    email: "john.doe@email.com",
+    name: "",
+    email: "",
     role: "UI/UX Designer",
-    location: "San Francisco, CA",
-    website: "johndoe.design",
-    bio: "Passionate UI/UX designer with 6+ years of experience creating intuitive and beautiful digital experiences.",
+    location: "",
+    website: "",
+    bio: "",
   });
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [notifications, setNotifications] = useState({
     emailNotifications: true,
@@ -29,6 +44,43 @@ export default function SettingsPage() {
     showLocation: true,
   });
 
+  // Fetch profile data on mount
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!session?.user) return;
+      
+      try {
+        const token = localStorage.getItem("bearer_token");
+        const response = await fetch("/api/profile", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setProfileData({
+            name: data.name || "",
+            email: data.email || "",
+            role: data.role || "UI/UX Designer",
+            location: data.location || "",
+            website: data.website || "",
+            bio: data.bio || "",
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch profile:", error);
+        toast.error("Failed to load profile data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (session?.user) {
+      fetchProfile();
+    }
+  }, [session]);
+
   const handleProfileChange = (field: string, value: string) => {
     setProfileData({ ...profileData, [field]: value });
   };
@@ -41,9 +93,53 @@ export default function SettingsPage() {
     setPrivacy({ ...privacy, [field]: value });
   };
 
-  const handleSave = () => {
-    alert("Settings saved successfully!");
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const token = localStorage.getItem("bearer_token");
+      const response = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: profileData.name,
+          role: profileData.role,
+          location: profileData.location,
+          website: profileData.website,
+          bio: profileData.bio,
+        }),
+      });
+
+      if (response.ok) {
+        await refetch(); // Refresh session data
+        toast.success("Settings saved successfully!");
+      } else {
+        const error = await response.json();
+        toast.error(error.error || "Failed to save settings");
+      }
+    } catch (error) {
+      console.error("Failed to save profile:", error);
+      toast.error("Failed to save settings");
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  if (isPending || isLoading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="border border-black p-8">
+          <p className="text-lg font-medium">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session?.user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -76,9 +172,10 @@ export default function SettingsPage() {
                 <input
                   type="email"
                   value={profileData.email}
-                  onChange={(e) => handleProfileChange("email", e.target.value)}
-                  className="w-full px-4 py-3 border border-black focus:outline-none focus:ring-2 focus:ring-black"
+                  disabled
+                  className="w-full px-4 py-3 border border-black bg-gray-100 cursor-not-allowed"
                 />
+                <p className="text-xs text-gray-600 mt-1">Email cannot be changed</p>
               </div>
               <div>
                 <label className="block text-sm font-bold mb-2">Role</label>
@@ -99,6 +196,7 @@ export default function SettingsPage() {
                   type="text"
                   value={profileData.location}
                   onChange={(e) => handleProfileChange("location", e.target.value)}
+                  placeholder="e.g., San Francisco, CA"
                   className="w-full px-4 py-3 border border-black focus:outline-none focus:ring-2 focus:ring-black"
                 />
               </div>
@@ -108,6 +206,7 @@ export default function SettingsPage() {
                   type="text"
                   value={profileData.website}
                   onChange={(e) => handleProfileChange("website", e.target.value)}
+                  placeholder="https://yourwebsite.com"
                   className="w-full px-4 py-3 border border-black focus:outline-none focus:ring-2 focus:ring-black"
                 />
               </div>
@@ -117,6 +216,7 @@ export default function SettingsPage() {
                   value={profileData.bio}
                   onChange={(e) => handleProfileChange("bio", e.target.value)}
                   rows={4}
+                  placeholder="Tell us about yourself..."
                   className="w-full px-4 py-3 border border-black focus:outline-none focus:ring-2 focus:ring-black"
                 />
               </div>
@@ -129,152 +229,27 @@ export default function SettingsPage() {
               <h3 className="text-xl font-bold">Notification Preferences</h3>
             </div>
             <div className="p-6 space-y-4">
-              <div className="flex items-center justify-between py-3 border-b border-gray-200">
-                <div>
-                  <h4 className="font-bold">Email Notifications</h4>
-                  <p className="text-sm text-gray-600">Receive notifications via email</p>
-                </div>
-                <button
-                  onClick={() => handleNotificationChange("emailNotifications")}
-                  className={`w-14 h-8 border-2 border-black transition-colors ${
-                    notifications.emailNotifications ? "bg-black" : "bg-white"
-                  }`}
-                >
-                  <div
-                    className={`w-6 h-6 border border-black transition-transform ${
-                      notifications.emailNotifications
-                        ? "translate-x-6 bg-white"
-                        : "translate-x-0 bg-black"
+              {Object.entries(notifications).map(([key, value]) => (
+                <div key={key} className="flex items-center justify-between py-3 border-b border-gray-200">
+                  <div>
+                    <h4 className="font-bold">{key.replace(/([A-Z])/g, ' $1').trim()}</h4>
+                  </div>
+                  <button
+                    onClick={() => handleNotificationChange(key)}
+                    className={`w-14 h-8 border-2 border-black transition-colors ${
+                      value ? "bg-black" : "bg-white"
                     }`}
-                  />
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between py-3 border-b border-gray-200">
-                <div>
-                  <h4 className="font-bold">Post Likes</h4>
-                  <p className="text-sm text-gray-600">When someone likes your post</p>
+                  >
+                    <div
+                      className={`w-6 h-6 border border-black transition-transform ${
+                        value
+                          ? "translate-x-6 bg-white"
+                          : "translate-x-0 bg-black"
+                      }`}
+                    />
+                  </button>
                 </div>
-                <button
-                  onClick={() => handleNotificationChange("postLikes")}
-                  className={`w-14 h-8 border-2 border-black transition-colors ${
-                    notifications.postLikes ? "bg-black" : "bg-white"
-                  }`}
-                >
-                  <div
-                    className={`w-6 h-6 border border-black transition-transform ${
-                      notifications.postLikes
-                        ? "translate-x-6 bg-white"
-                        : "translate-x-0 bg-black"
-                    }`}
-                  />
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between py-3 border-b border-gray-200">
-                <div>
-                  <h4 className="font-bold">Post Comments</h4>
-                  <p className="text-sm text-gray-600">When someone comments on your post</p>
-                </div>
-                <button
-                  onClick={() => handleNotificationChange("postComments")}
-                  className={`w-14 h-8 border-2 border-black transition-colors ${
-                    notifications.postComments ? "bg-black" : "bg-white"
-                  }`}
-                >
-                  <div
-                    className={`w-6 h-6 border border-black transition-transform ${
-                      notifications.postComments
-                        ? "translate-x-6 bg-white"
-                        : "translate-x-0 bg-black"
-                    }`}
-                  />
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between py-3 border-b border-gray-200">
-                <div>
-                  <h4 className="font-bold">New Followers</h4>
-                  <p className="text-sm text-gray-600">When someone follows you</p>
-                </div>
-                <button
-                  onClick={() => handleNotificationChange("newFollowers")}
-                  className={`w-14 h-8 border-2 border-black transition-colors ${
-                    notifications.newFollowers ? "bg-black" : "bg-white"
-                  }`}
-                >
-                  <div
-                    className={`w-6 h-6 border border-black transition-transform ${
-                      notifications.newFollowers
-                        ? "translate-x-6 bg-white"
-                        : "translate-x-0 bg-black"
-                    }`}
-                  />
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between py-3 border-b border-gray-200">
-                <div>
-                  <h4 className="font-bold">Chat Messages</h4>
-                  <p className="text-sm text-gray-600">When you receive new messages</p>
-                </div>
-                <button
-                  onClick={() => handleNotificationChange("chatMessages")}
-                  className={`w-14 h-8 border-2 border-black transition-colors ${
-                    notifications.chatMessages ? "bg-black" : "bg-white"
-                  }`}
-                >
-                  <div
-                    className={`w-6 h-6 border border-black transition-transform ${
-                      notifications.chatMessages
-                        ? "translate-x-6 bg-white"
-                        : "translate-x-0 bg-black"
-                    }`}
-                  />
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between py-3 border-b border-gray-200">
-                <div>
-                  <h4 className="font-bold">Job Alerts</h4>
-                  <p className="text-sm text-gray-600">New job opportunities matching your profile</p>
-                </div>
-                <button
-                  onClick={() => handleNotificationChange("jobAlerts")}
-                  className={`w-14 h-8 border-2 border-black transition-colors ${
-                    notifications.jobAlerts ? "bg-black" : "bg-white"
-                  }`}
-                >
-                  <div
-                    className={`w-6 h-6 border border-black transition-transform ${
-                      notifications.jobAlerts
-                        ? "translate-x-6 bg-white"
-                        : "translate-x-0 bg-black"
-                    }`}
-                  />
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between py-3">
-                <div>
-                  <h4 className="font-bold">Weekly Digest</h4>
-                  <p className="text-sm text-gray-600">Weekly summary of community activity</p>
-                </div>
-                <button
-                  onClick={() => handleNotificationChange("weeklyDigest")}
-                  className={`w-14 h-8 border-2 border-black transition-colors ${
-                    notifications.weeklyDigest ? "bg-black" : "bg-white"
-                  }`}
-                >
-                  <div
-                    className={`w-6 h-6 border border-black transition-transform ${
-                      notifications.weeklyDigest
-                        ? "translate-x-6 bg-white"
-                        : "translate-x-0 bg-black"
-                    }`}
-                  />
-                </button>
-              </div>
+              ))}
             </div>
           </section>
 
@@ -366,10 +341,11 @@ export default function SettingsPage() {
           <div className="flex justify-end">
             <button
               onClick={handleSave}
-              className="px-8 py-4 border border-black bg-black text-white hover:bg-white hover:text-black transition-colors font-bold flex items-center gap-2"
+              disabled={isSaving}
+              className="px-8 py-4 border border-black bg-black text-white hover:bg-white hover:text-black transition-colors font-bold flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Save size={20} />
-              Save All Changes
+              {isSaving ? "Saving..." : "Save All Changes"}
             </button>
           </div>
         </div>

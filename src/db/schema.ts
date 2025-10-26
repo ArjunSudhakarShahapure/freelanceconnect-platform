@@ -17,6 +17,10 @@ export const user = sqliteTable("user", {
   updatedAt: integer("updated_at", { mode: "timestamp" })
     .$defaultFn(() => new Date())
     .notNull(),
+  role: text("role"),
+  location: text("location"),
+  website: text("website"),
+  bio: text("bio"),
 });
 
 export const session = sqliteTable("session", {

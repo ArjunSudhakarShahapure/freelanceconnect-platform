@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MapPin, Link as LinkIcon, Mail, Briefcase, Edit } from "lucide-react";
 import Image from "next/image";
+import { useSession } from "@/lib/auth-client";
+import { useRouter } from "next/navigation";
 
 interface PortfolioItem {
   id: number;
@@ -11,7 +13,28 @@ interface PortfolioItem {
   image: string;
 }
 
+interface ProfileData {
+  name: string;
+  email: string;
+  role: string;
+  location: string;
+  website: string;
+  bio: string;
+}
+
 export default function ProfilePage() {
+  const { data: session, isPending } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isPending && !session?.user) {
+      router.push("/login");
+    }
+  }, [session, isPending, router]);
+
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
   const [portfolioItems] = useState<PortfolioItem[]>([
     {
       id: 1,
@@ -51,18 +74,62 @@ export default function ProfilePage() {
     },
   ]);
 
+  // Fetch profile data from API
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!session?.user) return;
+      
+      try {
+        const token = localStorage.getItem("bearer_token");
+        const response = await fetch("/api/profile", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setProfileData({
+            name: data.name || "User",
+            email: data.email || "",
+            role: data.role || "Designer",
+            location: data.location || "Location not set",
+            website: data.website || "website.com",
+            bio: data.bio || "No bio yet. Edit your profile to add one!",
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch profile:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (session?.user) {
+      fetchProfile();
+    }
+  }, [session]);
+
   const userInfo = {
-    name: "John Doe",
-    role: "UI/UX Designer",
-    location: "San Francisco, CA",
-    email: "john.doe@email.com",
-    website: "johndoe.design",
-    bio: "Passionate UI/UX designer with 6+ years of experience creating intuitive and beautiful digital experiences. Specialized in mobile-first design and design systems. Always eager to collaborate with fellow designers and learn new techniques.",
     experience: "6+ years",
     projects: 42,
     followers: 1234,
     following: 567,
   };
+
+  if (isPending || isLoading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="border border-black p-8">
+          <p className="text-lg font-medium">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session?.user || !profileData) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -82,7 +149,9 @@ export default function ProfilePage() {
                 {/* Avatar */}
                 <div className="flex-shrink-0">
                   <div className="w-32 h-32 border-2 border-black bg-white flex items-center justify-center">
-                    <span className="text-5xl font-bold">JD</span>
+                    <span className="text-5xl font-bold">
+                      {profileData.name.split(" ").map(n => n[0]).join("")}
+                    </span>
                   </div>
                 </div>
 
@@ -90,31 +159,38 @@ export default function ProfilePage() {
                 <div className="flex-1">
                   <div className="flex justify-between items-start mb-4">
                     <div>
-                      <h3 className="text-3xl font-bold mb-2">{userInfo.name}</h3>
-                      <p className="text-xl text-gray-600 mb-4">{userInfo.role}</p>
+                      <h3 className="text-3xl font-bold mb-2">{profileData.name}</h3>
+                      <p className="text-xl text-gray-600 mb-4">{profileData.role}</p>
                     </div>
-                    <button className="px-6 py-2 border border-black bg-white text-black hover:bg-black hover:text-white transition-colors flex items-center gap-2">
+                    <button 
+                      onClick={() => router.push("/dashboard/settings")}
+                      className="px-6 py-2 border border-black bg-white text-black hover:bg-black hover:text-white transition-colors flex items-center gap-2"
+                    >
                       <Edit size={18} />
                       Edit Profile
                     </button>
                   </div>
 
-                  <p className="text-base leading-relaxed mb-6">{userInfo.bio}</p>
+                  <p className="text-base leading-relaxed mb-6">{profileData.bio}</p>
 
                   {/* Contact Info */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
-                    <div className="flex items-center gap-2">
-                      <MapPin size={18} />
-                      <span className="text-sm">{userInfo.location}</span>
-                    </div>
+                    {profileData.location && (
+                      <div className="flex items-center gap-2">
+                        <MapPin size={18} />
+                        <span className="text-sm">{profileData.location}</span>
+                      </div>
+                    )}
                     <div className="flex items-center gap-2">
                       <Mail size={18} />
-                      <span className="text-sm">{userInfo.email}</span>
+                      <span className="text-sm">{profileData.email}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <LinkIcon size={18} />
-                      <span className="text-sm">{userInfo.website}</span>
-                    </div>
+                    {profileData.website && (
+                      <div className="flex items-center gap-2">
+                        <LinkIcon size={18} />
+                        <span className="text-sm">{profileData.website}</span>
+                      </div>
+                    )}
                     <div className="flex items-center gap-2">
                       <Briefcase size={18} />
                       <span className="text-sm">{userInfo.experience} experience</span>

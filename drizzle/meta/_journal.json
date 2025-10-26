@@ -8,6 +8,13 @@
       "when": 1761462087346,
       "tag": "0000_productive_cannonball",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1761463781951,
+      "tag": "0001_loving_salo",
+      "breakpoints": true
     }
   ]
 }
