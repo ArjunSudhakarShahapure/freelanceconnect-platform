@@ -2,8 +2,29 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { authClient } from "@/lib/auth-client";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export default function Home() {
+  const router = useRouter();
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const { data, error } = await authClient.signIn.social({
+        provider: "google",
+        callbackURL: "/dashboard/feed",
+      });
+
+      if (error?.code) {
+        toast.error("Google sign-in failed. Please try again.");
+        return;
+      }
+    } catch (error) {
+      toast.error("An error occurred during Google sign-in.");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
@@ -11,7 +32,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">FreelanceConnect</h1>
           <Link 
-            href="/dashboard/feed"
+            href="/login"
             className="px-6 py-2 border border-black bg-white text-black hover:bg-black hover:text-white transition-colors"
           >
             Login
@@ -46,17 +67,17 @@ export default function Home() {
             transition={{ duration: 0.6, delay: 0.4 }}
           >
             <Link 
-              href="/dashboard/feed"
+              href="/register"
               className="px-8 py-4 border-2 border-black bg-black text-white hover:bg-white hover:text-black transition-colors text-lg font-medium w-full sm:w-auto text-center"
             >
               Join Now
             </Link>
-            <Link 
-              href="/dashboard/feed"
+            <button
+              onClick={handleGoogleSignIn}
               className="px-8 py-4 border-2 border-black bg-white text-black hover:bg-black hover:text-white transition-colors text-lg font-medium w-full sm:w-auto text-center"
             >
               Login with Google
-            </Link>
+            </button>
           </motion.div>
         </div>
       </section>
@@ -136,7 +157,7 @@ export default function Home() {
             and accessing exclusive resources today.
           </p>
           <Link 
-            href="/dashboard/feed"
+            href="/register"
             className="inline-block px-10 py-5 border-2 border-black bg-black text-white hover:bg-white hover:text-black transition-colors text-xl font-medium"
           >
             Get Started Now
@@ -157,18 +178,18 @@ export default function Home() {
             <div>
               <h6 className="text-lg font-bold mb-4">Platform</h6>
               <ul className="space-y-2 text-sm">
-                <li><Link href="#" className="hover:underline">Feed</Link></li>
-                <li><Link href="#" className="hover:underline">Chat</Link></li>
-                <li><Link href="#" className="hover:underline">Resources</Link></li>
-                <li><Link href="#" className="hover:underline">Vacancies</Link></li>
+                <li><Link href="/dashboard/feed" className="hover:underline">Feed</Link></li>
+                <li><Link href="/dashboard/chat" className="hover:underline">Chat</Link></li>
+                <li><Link href="/dashboard/resources" className="hover:underline">Resources</Link></li>
+                <li><Link href="/dashboard/vacancies" className="hover:underline">Vacancies</Link></li>
               </ul>
             </div>
             <div>
               <h6 className="text-lg font-bold mb-4">Legal</h6>
               <ul className="space-y-2 text-sm">
-                <li><Link href="#" className="hover:underline">Privacy Policy</Link></li>
-                <li><Link href="#" className="hover:underline">Terms of Service</Link></li>
-                <li><Link href="#" className="hover:underline">Contact</Link></li>
+                <li><Link href="/login" className="hover:underline">Login</Link></li>
+                <li><Link href="/register" className="hover:underline">Register</Link></li>
+                <li><Link href="/dashboard/profile" className="hover:underline">Profile</Link></li>
               </ul>
             </div>
           </div>
